@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <meta charset="utf-8">
+ <title>Definite integral calculator</title>
+ <style type="text/css">
+  canvas { border: 1px solid black; }
+ </style>
+</head>
+<body>
+
+ <form onsubmit="return update(this);">
+  Definite integral of the function
+  <input name="fun" value="sin(x)" /> on interval
+  <input name="points" value="0, Math.PI/2" /> with an accuracy of at least
+  <input name="precision" value="0.05" /> is
+  <output name="integral"></output>.
+  <input type="submit" />
+  <input type="reset" />
+ </form>
+
+ <canvas id="drawing"></canvas>
+
+ <script>
+
+  // Constructor of a function
+  function Fun(f){
+ 
+   function point(x0) {
+    return {x:x0, y:f(x0)};
+   }
+
+   // Method for Definite Integral of the function
+   this.defInt = function(points,eps) {
+
+    // Area of curved trapezoid
+    function area(A,B,h,eps) {
+ 
+     h /= 2;
+     eps /= 2;
+     
+     var C = point(A.x + h);
+ 
+     if (canvas.getContext){
+      ctx.strokeStyle = "green";
+      A.y < B.y ? ctx.strokeRect(C.x, A.y, h, C.y-A.y) : ctx.strokeRect(A.x, B.y, h, C.y-B.y);
+      ctx.strokeStyle = "red";
+      A.y < B.y ? ctx.strokeRect(A.x, C.y, h, B.y-C.y) : ctx.strokeRect(C.x, C.y, h, A.y-C.y);
+     }
+ 
+     return Math.abs(B.y-A.y) < eps/h ?
+      (A.y+4*C.y+B.y)*h/3 :
+      area(A,C,h,eps) + area(C,B,h,eps);
+    } // End of area 
+
+    points = points.map(point);
+    var A = points.shift();
+    var B = points[points.length - 1];
+    var dx = B.x-A.x;
+    var miny = points.reduce(
+     function(total, B){
+      return Math.min(total, B.y);
+     }, A.y
+    );
+    var maxy = points.reduce(
+     function(total, B){
+      return Math.max(total, B.y);
+     }, A.y
+    );
+    var dy = B.y-A.y;
+    var ady = Math.abs(dy);
+    var n = dx*(maxy-miny)/eps;
+    var zoom = 70*Math.log(n);
+
+    var canvas = document.getElementById('drawing');
+    canvas.width = dx*zoom;
+    canvas.height = (maxy-miny)*zoom;
+    if (canvas.getContext){
+     var ctx = canvas.getContext('2d');
+     ctx.translate(0,canvas.height);
+     ctx.scale(zoom,-zoom); // repairs wrong orientation of y axis
+     ctx.translate(-A.x, -miny); // put origin at A and miny
+     ctx.lineWidth = 1/zoom;
+    }
+
+    return points.reduce(
+     function(total, B){
+      total += area(A,B, B.x-A.x, eps);
+      A = B;
+      return total;
+     }, 0
+    );
+   } // End of defint
+
+  } // End of Fun
+
+  function update(q) {
+   q.integral.value = new Fun(
+    new Function("x", "with(Math){return "+q.fun.value+"}")
+   ).defInt(
+    q.points.value.split(",").map(eval),
+    Number(q.precision.value)
+   );
+   return false;
+  } // End of update
+
+ </script>
+
+</body>
+</html>
